@@ -88,6 +88,7 @@ namespace Bonsai.Editor
         SizeF inverseScaleFactor;
         SizeF scaleFactor;
         EditorPluginHost pluginHost;
+        ToolWindowHost toolWindowHost;
 
         public EditorForm(
             IObservable<IGrouping<string, WorkflowElementDescriptor>> elementProvider,
@@ -2613,7 +2614,7 @@ namespace Bonsai.Editor
 
         #region EditorSite Class
 
-        class EditorSite : ISite, IWorkflowEditorService, IWorkflowEditorState, IWorkflowToolboxService, IUIService, IDefinitionProvider
+        class EditorSite : ISite, IWorkflowEditorService, IWorkflowEditorState, IWorkflowToolboxService, IUIService, IDefinitionProvider, IEditorThemeService, IEditorToolWindowService
         {
             readonly EditorForm siteForm;
 
@@ -2722,7 +2723,9 @@ namespace Bonsai.Editor
                     serviceType == typeof(IWorkflowEditorState) ||
                     serviceType == typeof(IWorkflowToolboxService) ||
                     serviceType == typeof(IUIService) ||
-                    serviceType == typeof(IDefinitionProvider))
+                    serviceType == typeof(IDefinitionProvider) ||
+                    serviceType == typeof(IEditorThemeService) ||
+                    serviceType == typeof(IEditorToolWindowService))
                 {
                     return this;
                 }
@@ -3085,6 +3088,37 @@ namespace Bonsai.Editor
             }
 
             public System.Collections.IDictionary Styles { get; }
+
+            public EditorColorTheme ActiveTheme
+            {
+                get
+                {
+                    return siteForm.themeRenderer.ActiveTheme == ColorTheme.Dark
+                        ? EditorColorTheme.Dark
+                        : EditorColorTheme.Light;
+                }
+            }
+
+            public event EventHandler ThemeChanged
+            {
+                add { siteForm.themeRenderer.ThemeChanged += value; }
+                remove { siteForm.themeRenderer.ThemeChanged -= value; }
+            }
+
+            public void ShowToolWindow(string title, Control control)
+            {
+                if (siteForm.toolWindowHost == null)
+                {
+                    siteForm.toolWindowHost = new ToolWindowHost(siteForm.panelSplitContainer, siteForm.themeRenderer);
+                }
+
+                siteForm.toolWindowHost.ShowToolWindow(title, control);
+            }
+
+            public void HideToolWindow(Control control)
+            {
+                siteForm.toolWindowHost?.HideToolWindow(control);
+            }
         }
 
         #endregion

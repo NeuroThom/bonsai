@@ -2614,7 +2614,7 @@ namespace Bonsai.Editor
 
         #region EditorSite Class
 
-        class EditorSite : ISite, IWorkflowEditorService, IWorkflowEditorState, IWorkflowToolboxService, IUIService, IDefinitionProvider, IEditorThemeService, IEditorToolWindowService
+        class EditorSite : ISite, IWorkflowEditorService, IWorkflowEditorState, IWorkflowToolboxService, IUIService, IDefinitionProvider, IEditorThemeService, IEditorToolWindowService, IWorkflowSelectionService
         {
             readonly EditorForm siteForm;
 
@@ -2725,7 +2725,8 @@ namespace Bonsai.Editor
                     serviceType == typeof(IUIService) ||
                     serviceType == typeof(IDefinitionProvider) ||
                     serviceType == typeof(IEditorThemeService) ||
-                    serviceType == typeof(IEditorToolWindowService))
+                    serviceType == typeof(IEditorToolWindowService) ||
+                    serviceType == typeof(IWorkflowSelectionService))
                 {
                     return this;
                 }
@@ -3118,6 +3119,40 @@ namespace Bonsai.Editor
             public void HideToolWindow(Control control)
             {
                 siteForm.toolWindowHost?.HideToolWindow(control);
+            }
+
+            public string SelectedWorkflowPath
+            {
+                get
+                {
+                    var selectedView = siteForm.selectionModel.SelectedView;
+                    if (selectedView == null) return null;
+                    return selectedView.WorkflowPath?.ToString() ?? string.Empty;
+                }
+            }
+
+            public IReadOnlyList<string> SelectedNodePaths
+            {
+                get
+                {
+                    var workflowPath = siteForm.selectionModel.SelectedView?.WorkflowPath;
+                    return siteForm.selectionModel.SelectedNodes
+                        .Select(node => new WorkflowEditorPath(node.Index, workflowPath).ToString())
+                        .ToArray();
+                }
+            }
+
+            public IReadOnlyList<ExpressionBuilder> GetSelectedBuilders()
+            {
+                return siteForm.selectionModel.SelectedNodes
+                    .Select(node => ExpressionBuilder.Unwrap(node.Value))
+                    .ToArray();
+            }
+
+            public event EventHandler SelectionChanged
+            {
+                add { siteForm.selectionModel.SelectionChanged += value; }
+                remove { siteForm.selectionModel.SelectionChanged -= value; }
             }
         }
 

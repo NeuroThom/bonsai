@@ -29,7 +29,7 @@ using System.Net;
 
 namespace Bonsai.Editor
 {
-    public partial class EditorForm : Form
+    public partial class EditorForm : Form, IWorkflowViewProvider
     {
         const float DefaultEditorScale = 1.0f;
         const string EditorUid = "editor";
@@ -52,6 +52,7 @@ namespace Bonsai.Editor
         readonly IScriptEnvironment scriptEnvironment;
         readonly IDocumentationProvider documentationProvider;
         readonly WorkflowEditorControl editorControl;
+        readonly WorkflowEditingService editingService;
         readonly WorkflowSelectionModel selectionModel;
         readonly Dictionary<string, string> propertyAssignments;
         readonly Dictionary<string, TreeNode> toolboxCategories;
@@ -169,6 +170,7 @@ namespace Bonsai.Editor
             workflowExtensions = new List<WorkflowElementDescriptor>();
             exceptionCache = new WorkflowRuntimeExceptionCache();
             selectionModel = new WorkflowSelectionModel();
+            editingService = new WorkflowEditingService(editorSite, this);
             propertyAssignments = new Dictionary<string, string>();
             if (serviceProvider != null)
             {
@@ -1562,6 +1564,34 @@ namespace Bonsai.Editor
             }
         }
 
+        WorkflowEditor IWorkflowViewProvider.GetWorkflowEditor(WorkflowEditorPath workflowPath)
+        {
+            foreach (var workflowView in editorControl.GetWorkflowViews())
+            {
+                if (workflowView.WorkflowPath == workflowPath)
+                {
+                    return workflowView.Editor;
+                }
+            }
+
+            var selectedView = selectionModel.SelectedView;
+            if (selectedView != null)
+            {
+                selectedView.Editor.NavigateTo(workflowPath);
+                return selectedView.Editor;
+            }
+
+            return editorControl.CreateDockContent(workflowPath)?.WorkflowGraphView.Editor;
+        }
+
+        void IWorkflowViewProvider.InvalidateLayout()
+        {
+            foreach (var workflowView in editorControl.GetWorkflowViews())
+            {
+                workflowView.InvalidateGraphLayout(validateWorkflow: false);
+            }
+        }
+
         void SelectBuilderNode(ExpressionBuilder builder, NavigationPreference navigationPreference = default)
         {
             var builderPath = WorkflowEditorPath.GetBuilderPath(workflowBuilder, builder);
@@ -2677,6 +2707,12 @@ namespace Bonsai.Editor
                 if (serviceType == typeof(WorkflowSelectionModel))
                 {
                     return siteForm.selectionModel;
+                }
+
+                if (serviceType == typeof(IWorkflowEditingService) ||
+                    serviceType == typeof(WorkflowEditingService))
+                {
+                    return siteForm.editingService;
                 }
 
                 if (serviceType == typeof(TypeVisualizerMap))

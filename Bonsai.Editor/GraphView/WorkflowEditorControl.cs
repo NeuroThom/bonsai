@@ -166,6 +166,18 @@ namespace Bonsai.Editor.GraphView
             }
         }
 
+        public IEnumerable<WorkflowGraphView> GetWorkflowViews()
+        {
+            for (int i = 0; i < dockPanel.Contents.Count; i++)
+            {
+                if (dockPanel.Contents[i] is WorkflowDockContent workflowContent &&
+                    !workflowContent.WorkflowGraphView.IsDisposed)
+                {
+                    yield return workflowContent.WorkflowGraphView;
+                }
+            }
+        }
+
         public void SelectDockContent(WorkflowGraphView workflowGraphView)
         {
             foreach (var content in dockPanel.Contents)

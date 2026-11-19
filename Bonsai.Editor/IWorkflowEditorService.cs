@@ -33,5 +33,7 @@ namespace Bonsai.Editor
         bool ValidateWorkflow();
 
         void RefreshEditor();
+
+        void Undo(bool allowRedo);
     }
 }

@@ -11,7 +11,7 @@ namespace Bonsai.Editor.GraphModel
     {
         const string VersionAttributeName = "Version";
         internal static readonly XmlSerializerNamespaces EmptyNamespaces = GetEmptySerializerNamespaces();
-        static readonly XmlWriterSettings DefaultWriterSettings = new XmlWriterSettings
+        internal static readonly XmlWriterSettings DefaultWriterSettings = new XmlWriterSettings
         {
             NamespaceHandling = NamespaceHandling.OmitDuplicates,
             Indent = true

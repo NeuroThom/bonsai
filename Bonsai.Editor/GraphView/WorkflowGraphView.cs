@@ -49,6 +49,7 @@ namespace Bonsai.Editor.GraphView
         readonly VisualizerLayoutMap visualizerSettings;
         readonly WorkflowWatchMap watchMap;
         readonly IServiceProvider serviceProvider;
+        readonly WorkflowEditingService editingService;
         readonly IUIService uiService;
         readonly ThemeRenderer themeRenderer;
         readonly WorkflowWatch workflowWatch;
@@ -61,6 +62,7 @@ namespace Bonsai.Editor.GraphView
             serviceProvider = provider ?? throw new ArgumentNullException(nameof(provider));
             InitializeComponent();
             uiService = (IUIService)provider.GetService(typeof(IUIService));
+            editingService = (WorkflowEditingService)provider.GetService(typeof(WorkflowEditingService));
             themeRenderer = (ThemeRenderer)provider.GetService(typeof(ThemeRenderer));
             definitionProvider = (IDefinitionProvider)provider.GetService(typeof(IDefinitionProvider));
             commandExecutor = (CommandExecutor)provider.GetService(typeof(CommandExecutor));
@@ -1090,11 +1092,21 @@ namespace Bonsai.Editor.GraphView
             graphView.BackColor = themeRenderer.ToolStripRenderer.ColorTable.WindowBackColor;
         }
 
+        private void ShowEditorError(Exception ex)
+        {
+            // edits made by a plugin collect their own errors, so that an invalid edit is
+            // reported to the plugin instead of blocking on a modal dialog
+            if (editingService == null || !editingService.TryHandleError(ex))
+            {
+                uiService.ShowError(ex);
+            }
+        }
+
         private IDisposable InitializeViewBindings()
         {
             Editor.GraphView = graphView;
             return new CompositeDisposable(
-                Editor.Error.Subscribe(uiService.ShowError),
+                Editor.Error.Subscribe(ShowEditorError),
                 Editor.CloseWorkflowEditor.Subscribe(EditorControl.CloseDockContent),
                 Editor.InvalidateLayout.Subscribe(validateWorkflow => EditorControl.InvalidateGraphLayout(this, validateWorkflow)),
                 Editor.UpdateLayout.Subscribe(validateWorkflow => EditorControl.UpdateGraphLayout(this, validateWorkflow)),

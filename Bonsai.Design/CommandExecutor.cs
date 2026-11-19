@@ -39,6 +39,22 @@ namespace Bonsai.Design
         }
 
         /// <summary>
+        /// Gets the number of composite commands which are currently open, where zero
+        /// means no composite command has been started.
+        /// </summary>
+        /// <remarks>
+        /// This value is incremented by every call to <see cref="BeginCompositeCommand"/>
+        /// and decremented by every matching call to <see cref="EndCompositeCommand"/>.
+        /// Because nested composite commands are merged into the outermost composite action,
+        /// a caller which has started a composite command can use this value to check
+        /// whether its own composite is still the innermost one.
+        /// </remarks>
+        public int CompositeDepth
+        {
+            get { return compositeDepth; }
+        }
+
+        /// <summary>
         /// Clears the entire command execution history.
         /// </summary>
         public void Clear()

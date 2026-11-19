@@ -947,7 +947,7 @@ namespace Bonsai.Editor.GraphModel
             commandExecutor.EndCompositeCommand();
         }
 
-        ExpressionBuilder CreateBuilder(string typeName, ElementCategory elementCategory, bool group)
+        internal static ExpressionBuilder CreateBuilder(string typeName, ElementCategory elementCategory, bool group)
         {
             if (elementCategory == ~ElementCategory.Workflow)
             {

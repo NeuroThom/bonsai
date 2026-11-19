@@ -10,6 +10,7 @@ namespace Bonsai.Design
     public class CommandExecutor : Component
     {
         Command composite;
+        private int compositeDepth;
         private int currentCommand = -1;
         private readonly List<Command> history = new List<Command>();
 
@@ -56,18 +57,18 @@ namespace Bonsai.Design
         /// Marks the beginning of a composite command execution.
         /// </summary>
         /// <remarks>
-        /// Every command executed until <see cref="EndCompositeCommand"/> will be considered
-        /// part of the composite action. Calling undo or redo on a composite action will affect
-        /// all commands in the composite, as if they were effectively part of a single command.
+        /// Every command executed until the matching call to <see cref="EndCompositeCommand"/>
+        /// will be considered part of the composite action. Calling undo or redo on a composite
+        /// action will affect all commands in the composite, as if they were effectively part of
+        /// a single command. Composite commands can be nested, in which case all nested commands
+        /// are merged into the outermost composite action.
         /// </remarks>
         public void BeginCompositeCommand()
         {
-            if (composite != null)
+            if (compositeDepth++ == 0)
             {
-                throw new InvalidOperationException($"{nameof(EndCompositeCommand)} must be called before creating a new composite command.");
+                composite = new Command(null, () => { });
             }
-
-            composite = new Command(null, () => { });
         }
 
         /// <summary>
@@ -105,20 +106,36 @@ namespace Bonsai.Design
             else
             {
                 composite = new Command(command, undo);
-                EndCompositeCommand();
+                CommitCompositeCommand();
             }
         }
 
         /// <summary>
         /// Marks the end of a composite command execution.
         /// </summary>
+        /// <remarks>
+        /// Every call to this method must be matched by a previous call to
+        /// <see cref="BeginCompositeCommand"/>. In the case of nested composite commands,
+        /// the composite action is stored in the command history, and the
+        /// <see cref="StatusChanged"/> event raised, only when the outermost composite ends.
+        /// </remarks>
         public void EndCompositeCommand()
         {
-            if (composite == null)
+            if (compositeDepth == 0)
             {
                 throw new InvalidOperationException($"{nameof(BeginCompositeCommand)} must be called before this operation.");
             }
 
+            if (--compositeDepth > 0)
+            {
+                return;
+            }
+
+            CommitCompositeCommand();
+        }
+
+        private void CommitCompositeCommand()
+        {
             if (composite.Execute == null)
             {
                 composite = null;

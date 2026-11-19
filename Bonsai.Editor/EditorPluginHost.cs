@@ -25,6 +25,12 @@ namespace Bonsai.Editor
                     return;
                 }
 
+                if (!typeof(IEditorPlugin).IsAssignableFrom(type))
+                {
+                    Trace.TraceError("The editor plugin type \"{0}\" does not implement {1}.", descriptor.PluginTypeName, nameof(IEditorPlugin));
+                    return;
+                }
+
                 plugin = (IEditorPlugin)Activator.CreateInstance(type);
             }
             catch (Exception ex)
@@ -58,7 +64,10 @@ namespace Bonsai.Editor
         static void DisposePlugin(IEditorPlugin plugin)
         {
             try { plugin.Dispose(); }
-            catch (Exception ex) { Trace.TraceError("{0}", ex); }
+            catch (Exception ex)
+            {
+                Trace.TraceError("Failed to dispose editor plugin \"{0}\": {1}", plugin.GetType().AssemblyQualifiedName, ex);
+            }
         }
     }
 }

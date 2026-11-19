@@ -88,7 +88,6 @@ namespace Bonsai.Editor
         SizeF inverseScaleFactor;
         SizeF scaleFactor;
         EditorPluginHost pluginHost;
-        ToolWindowHost toolWindowHost;
 
         public EditorForm(
             IObservable<IGrouping<string, WorkflowElementDescriptor>> elementProvider,
@@ -206,7 +205,8 @@ namespace Bonsai.Editor
         #region Loading
 
         /// <summary>
-        /// Gets or sets the provider of editor plugins to load after the editor is initialized.
+        /// Gets or sets the provider of editor plugins to initialize after the editor extensions
+        /// and the initial workflow are loaded, and before the workflow is started.
         /// </summary>
         public IObservable<EditorPluginDescriptor> PluginProvider { get; set; }
 
@@ -354,27 +354,15 @@ namespace Bonsai.Editor
                 MessageBox.Show(this, fileNotFoundMessage, Resources.OpenWorkflow_Error_Caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            await InitializeWorkflowAsync(fileExists ? initialFileName : default);
-            LoadEditorPlugins();
-        }
+            var workflowInitialized = await InitializeWorkflowAsync(fileExists ? initialFileName : default);
+            await InitializeEditorPluginsAsync(formCancellation.Token);
 
-        void LoadEditorPlugins()
-        {
-            var pluginProvider = PluginProvider;
-            if (pluginProvider == null || IsDisposed ||
-                EditorResult == EditorResult.ReloadEditor ||
-                formCancellation.IsCancellationRequested)
+            var loadAction = LoadAction;
+            if (workflowInitialized && loadAction != LoadAction.None)
             {
-                return;
+                var debugging = loadAction == LoadAction.Start;
+                StartWorkflow(debugging);
             }
-
-            pluginHost = new EditorPluginHost();
-            pluginProvider
-                .ObserveOn(formScheduler)
-                .Subscribe(
-                    descriptor => pluginHost?.Load(descriptor, editorSite),
-                    ex => System.Diagnostics.Trace.TraceError("{0}", ex),
-                    formCancellation.Token);
         }
 
         protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
@@ -652,7 +640,31 @@ namespace Bonsai.Editor
                 InitializeTypeVisualizersAsync(cancellationToken));
         }
 
-        async Task InitializeWorkflowAsync(string initialFileName)
+        async Task InitializeEditorPluginsAsync(CancellationToken cancellationToken)
+        {
+            var pluginProvider = PluginProvider;
+            if (pluginProvider == null)
+                return;
+
+            await initialization;
+            if (IsDisposed || EditorResult == EditorResult.ReloadEditor || cancellationToken.IsCancellationRequested)
+                return;
+
+            pluginHost = new EditorPluginHost();
+            await pluginProvider
+                .ObserveOn(formScheduler)
+                .Do(descriptor => pluginHost?.Load(descriptor, editorSite))
+                .Catch<EditorPluginDescriptor, Exception>(ex =>
+                {
+                    System.Diagnostics.Trace.TraceError("{0}", ex);
+                    return Observable.Empty<EditorPluginDescriptor>();
+                })
+                .SubscribeOn(Scheduler.Default)
+                .LastOrDefaultAsync()
+                .ToTask(cancellationToken);
+        }
+
+        async Task<bool> InitializeWorkflowAsync(string initialFileName)
         {
             if (!string.IsNullOrEmpty(initialFileName) && await OpenWorkflowAsync(initialFileName, false))
             {
@@ -673,18 +685,15 @@ namespace Bonsai.Editor
                         if (MessageBox.Show(this, message, caption, MessageBoxButtons.YesNo, icon, MessageBoxDefaultButton.Button2) == DialogResult.Yes)
                             continue;
                         else
-                            return;
+                            return false;
                     }
                 }
 
-                var loadAction = LoadAction;
-                if (loadAction != LoadAction.None)
-                {
-                    var debugging = loadAction == LoadAction.Start;
-                    StartWorkflow(debugging);
-                }
+                return true;
             }
-            else ClearWorkflow();
+
+            ClearWorkflow();
+            return false;
         }
 
         IEnumerable<WorkflowElementDescriptor> InitializeWorkflowExtensions(IEnumerable<WorkflowElementDescriptor> types)
@@ -3108,17 +3117,12 @@ namespace Bonsai.Editor
 
             public void ShowToolWindow(string title, Control control)
             {
-                if (siteForm.toolWindowHost == null)
-                {
-                    siteForm.toolWindowHost = new ToolWindowHost(siteForm.panelSplitContainer, siteForm.themeRenderer);
-                }
-
-                siteForm.toolWindowHost.ShowToolWindow(title, control);
+                siteForm.editorControl.ShowToolWindow(title, control);
             }
 
             public void HideToolWindow(Control control)
             {
-                siteForm.toolWindowHost?.HideToolWindow(control);
+                siteForm.editorControl.HideToolWindow(control);
             }
 
             public string SelectedWorkflowPath

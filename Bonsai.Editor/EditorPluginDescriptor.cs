@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using Bonsai.Design;
 
 namespace Bonsai.Editor
 {
@@ -31,6 +32,16 @@ namespace Bonsai.Editor
                 }
                 else PluginTypeName = ((Type)constructorArgument.Value).AssemblyQualifiedName;
             }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EditorPluginDescriptor"/> class
+        /// from the specified attribute instance.
+        /// </summary>
+        /// <param name="editorPlugin">The attribute declaring the editor plugin.</param>
+        public EditorPluginDescriptor(EditorPluginAttribute editorPlugin)
+        {
+            PluginTypeName = editorPlugin.PluginTypeName;
         }
     }
 }

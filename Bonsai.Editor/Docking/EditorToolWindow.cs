@@ -30,6 +30,11 @@ namespace Bonsai.Editor.Docking
             get { return serviceProvider; }
         }
 
+        internal string PersistString
+        {
+            get { return GetPersistString(); }
+        }
+
         private void themeRenderer_ThemeChanged(object sender, EventArgs e)
         {
             InitializeTheme(themeRenderer);

@@ -7,7 +7,7 @@ namespace Bonsai.Editor.GraphView
     {
         protected override string GetKeyForItem(EditorToolWindow item)
         {
-            return item.GetType().Name;
+            return item.PersistString;
         }
     }
 }

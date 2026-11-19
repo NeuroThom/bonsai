@@ -17,6 +17,7 @@ namespace Bonsai.Editor.GraphView
 {
     partial class WorkflowEditorControl : UserControl
     {
+        static readonly Size DefaultToolWindowSize = new(480, 640);
         readonly IServiceProvider serviceProvider;
         readonly IWorkflowEditorService editorService;
         readonly ThemeRenderer themeRenderer;
@@ -24,6 +25,7 @@ namespace Bonsai.Editor.GraphView
         readonly WatchToolWindow watchToolWindow;
         readonly WorkflowFindToolWindow findToolWindow;
         readonly EditorToolWindowCollection toolWindows;
+        Size defaultToolWindowSize = DefaultToolWindowSize;
 
         public WorkflowEditorControl(IServiceProvider provider)
         {
@@ -199,12 +201,76 @@ namespace Bonsai.Editor.GraphView
             ActivateToolWindow(watchToolWindow);
         }
 
-        private void ActivateToolWindow(EditorToolWindow toolWindow)
+        public void ShowToolWindow(string title, Control control)
+        {
+            if (control is null)
+                throw new ArgumentNullException(nameof(control));
+
+            var toolWindow = FindToolWindow(control);
+            if (toolWindow is null)
+            {
+                var typeName = control.GetType().FullName;
+                var key = typeName;
+                for (int i = 2; toolWindows.Contains(PluginToolWindow.GetPersistString(key)); i++)
+                {
+                    key = $"{typeName}#{i}";
+                }
+
+                toolWindow = new PluginToolWindow(serviceProvider, control, key);
+                toolWindows.Add(toolWindow);
+                control.Disposed += ToolWindowControl_Disposed;
+                var dockRightPortion = Math.Min(defaultToolWindowSize.Width, dockPanel.Width / 2);
+                if (dockRightPortion > 0 && dockPanel.DockWindows[DockState.DockRight].VisibleNestedPanes.Count == 0)
+                {
+                    dockPanel.DockRightPortion = dockRightPortion;
+                }
+
+                toolWindow.DefaultFloatWindowSize = defaultToolWindowSize;
+            }
+
+            toolWindow.Text = title;
+            ActivateToolWindow(toolWindow, DockState.DockRight);
+        }
+
+        public void HideToolWindow(Control control)
+        {
+            if (control is null)
+                throw new ArgumentNullException(nameof(control));
+
+            FindToolWindow(control)?.Hide();
+        }
+
+        private PluginToolWindow FindToolWindow(Control control)
+        {
+            foreach (var toolWindow in toolWindows)
+            {
+                if (toolWindow is PluginToolWindow pluginToolWindow &&
+                    pluginToolWindow.Control == control)
+                {
+                    return pluginToolWindow;
+                }
+            }
+
+            return null;
+        }
+
+        private void ToolWindowControl_Disposed(object sender, EventArgs e)
+        {
+            var toolWindow = FindToolWindow((Control)sender);
+            if (toolWindow is not null && !toolWindow.Disposing)
+            {
+                toolWindows.Remove(toolWindow);
+                toolWindow.DockPanel = null;
+                toolWindow.Dispose();
+            }
+        }
+
+        private void ActivateToolWindow(EditorToolWindow toolWindow, DockState defaultDockState = DockState.DockBottom)
         {
             if (toolWindow.DockState == DockState.Hidden)
                 toolWindow.Show(dockPanel);
             else if (toolWindow.DockState == DockState.Unknown)
-                toolWindow.Show(dockPanel, DockState.DockBottom);
+                toolWindow.Show(dockPanel, defaultDockState);
             else if (toolWindow.DockState >= DockState.DockTopAutoHide &&
                      toolWindow.DockState <= DockState.DockRightAutoHide)
                 dockPanel.ActiveAutoHideContent = toolWindow;
@@ -493,6 +559,10 @@ namespace Bonsai.Editor.GraphView
             dockPanel.DefaultFloatWindowSize = Size.Round(new SizeF(
                 width: 320 * factor.Width,
                 height: 240 * factor.Height
+            ));
+            defaultToolWindowSize = Size.Round(new SizeF(
+                width: DefaultToolWindowSize.Width * factor.Width,
+                height: DefaultToolWindowSize.Height * factor.Height
             ));
         }
 

@@ -231,6 +231,7 @@ namespace Bonsai
             serviceContainer.AddService(typeof(IScriptEnvironment), scriptEnvironment);
             serviceContainer.AddService(typeof(IDocumentationProvider), documentationProvider);
             using var mainForm = new EditorForm(elementProvider, visualizerProvider, serviceContainer, editorScale);
+            mainForm.PluginProvider = EditorPluginLoader.GetEditorPlugins(packageConfiguration);
             try
             {
                 updatesAvailable.ContinueWith(

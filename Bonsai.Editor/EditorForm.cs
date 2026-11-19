@@ -87,6 +87,7 @@ namespace Bonsai.Editor
         bool debugging;
         SizeF inverseScaleFactor;
         SizeF scaleFactor;
+        EditorPluginHost pluginHost;
 
         public EditorForm(
             IObservable<IGrouping<string, WorkflowElementDescriptor>> elementProvider,
@@ -203,6 +204,11 @@ namespace Bonsai.Editor
 
         #region Loading
 
+        /// <summary>
+        /// Gets or sets the provider of editor plugins to load after the editor is initialized.
+        /// </summary>
+        public IObservable<EditorPluginDescriptor> PluginProvider { get; set; }
+
         [Obsolete]
         public bool LaunchPackageManager
         {
@@ -279,6 +285,8 @@ namespace Bonsai.Editor
 
         void CloseEditorForm()
         {
+            pluginHost?.Dispose();
+            pluginHost = null;
             Application.RemoveMessageFilter(hotKeys);
             EditorSettings.Instance.AnnotationPanelSize = (int)Math.Round(
                 editorControl.AnnotationPanelSize * inverseScaleFactor.Width);
@@ -346,6 +354,26 @@ namespace Bonsai.Editor
             }
 
             await InitializeWorkflowAsync(fileExists ? initialFileName : default);
+            LoadEditorPlugins();
+        }
+
+        void LoadEditorPlugins()
+        {
+            var pluginProvider = PluginProvider;
+            if (pluginProvider == null || IsDisposed ||
+                EditorResult == EditorResult.ReloadEditor ||
+                formCancellation.IsCancellationRequested)
+            {
+                return;
+            }
+
+            pluginHost = new EditorPluginHost();
+            pluginProvider
+                .ObserveOn(formScheduler)
+                .Subscribe(
+                    descriptor => pluginHost?.Load(descriptor, editorSite),
+                    ex => System.Diagnostics.Trace.TraceError("{0}", ex),
+                    formCancellation.Token);
         }
 
         protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
@@ -2702,6 +2730,11 @@ namespace Bonsai.Editor
                 if (serviceType == typeof(IScriptEnvironment))
                 {
                     return siteForm.scriptEnvironment;
+                }
+
+                if (serviceType == typeof(ISynchronizeInvoke))
+                {
+                    return siteForm;
                 }
 
                 if (siteForm.serviceProvider != null)

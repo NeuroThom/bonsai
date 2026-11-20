@@ -17,7 +17,11 @@ namespace Bonsai.Editor.GraphView
 {
     partial class WorkflowEditorControl : UserControl
     {
-        static readonly Size DefaultToolWindowSize = new(480, 640);
+        // The size of the first float window of a plugin tool window. It is landscape because
+        // the controls plugins host, such as terminals and logs, read better wide than tall.
+        // A docked tool window takes a portion of the editor instead, never this size.
+        static readonly Size DefaultFloatWindowSize = new(900, 400);
+        const double DefaultDockBottomPortion = 0.25;
         readonly IServiceProvider serviceProvider;
         readonly IWorkflowEditorService editorService;
         readonly ThemeRenderer themeRenderer;
@@ -25,7 +29,7 @@ namespace Bonsai.Editor.GraphView
         readonly WatchToolWindow watchToolWindow;
         readonly WorkflowFindToolWindow findToolWindow;
         readonly EditorToolWindowCollection toolWindows;
-        Size defaultToolWindowSize = DefaultToolWindowSize;
+        Size defaultFloatWindowSize = DefaultFloatWindowSize;
 
         public WorkflowEditorControl(IServiceProvider provider)
         {
@@ -231,17 +235,23 @@ namespace Bonsai.Editor.GraphView
                 toolWindow = new PluginToolWindow(serviceProvider, control, key);
                 toolWindows.Add(toolWindow);
                 control.Disposed += ToolWindowControl_Disposed;
-                var dockRightPortion = Math.Min(defaultToolWindowSize.Width, dockPanel.Width / 2);
-                if (dockRightPortion > 0 && dockPanel.DockWindows[DockState.DockRight].VisibleNestedPanes.Count == 0)
+                // A fraction of the dock area, which is the region between the toolbox and the
+                // property grid rather than the whole editor window, since that area is what
+                // the docking system can express. A portion of one or more would instead be an
+                // absolute number of pixels, which the editor keeps when its window is resized,
+                // so a fraction is what makes the tool window grow with the editor. The portion
+                // is set only while the bottom dock is empty, so the find results and watch
+                // windows keep the portion they are already using.
+                if (dockPanel.DockWindows[DockState.DockBottom].VisibleNestedPanes.Count == 0)
                 {
-                    dockPanel.DockRightPortion = dockRightPortion;
+                    dockPanel.DockBottomPortion = DefaultDockBottomPortion;
                 }
 
-                toolWindow.DefaultFloatWindowSize = defaultToolWindowSize;
+                toolWindow.DefaultFloatWindowSize = defaultFloatWindowSize;
             }
 
             toolWindow.Text = title;
-            ActivateToolWindow(toolWindow, DockState.DockRight);
+            ActivateToolWindow(toolWindow, DockState.DockBottom);
         }
 
         public void HideToolWindow(Control control)
@@ -572,9 +582,9 @@ namespace Bonsai.Editor.GraphView
                 width: 320 * factor.Width,
                 height: 240 * factor.Height
             ));
-            defaultToolWindowSize = Size.Round(new SizeF(
-                width: DefaultToolWindowSize.Width * factor.Width,
-                height: DefaultToolWindowSize.Height * factor.Height
+            defaultFloatWindowSize = Size.Round(new SizeF(
+                width: DefaultFloatWindowSize.Width * factor.Width,
+                height: DefaultFloatWindowSize.Height * factor.Height
             ));
         }
 

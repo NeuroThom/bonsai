@@ -11,8 +11,8 @@ namespace Bonsai.Design
     {
         /// <summary>
         /// Shows the specified control in an editor tool window and activates it. The first
-        /// time a control is shown, a new tool window is created for it and docked on the
-        /// right of the workflow editor, from where it can be moved, floated, auto hidden or
+        /// time a control is shown, a new tool window is created for it and docked along the
+        /// bottom of the workflow editor, from where it can be moved, floated, auto hidden or
         /// grouped with other tool windows; showing the control again restores the tool
         /// window to its last position and updates its caption.
         /// </summary>

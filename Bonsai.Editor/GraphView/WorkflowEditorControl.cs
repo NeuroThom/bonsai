@@ -470,7 +470,7 @@ namespace Bonsai.Editor.GraphView
             }
         }
 
-        public void CloseAll()
+        public int CloseAll()
         {
             var contents = new List<IDockContent>(dockPanel.Contents.Count);
             IEnumerable<INestedPanesContainer> paneContainers = dockPanel.DockWindows;
@@ -495,10 +495,14 @@ namespace Bonsai.Editor.GraphView
                 }
             }
 
+            var closedContents = 0;
             for (int i = contents.Count - 1; i >= 0; i--)
             {
                 if (contents[i] is DockContent dockContent && !dockContent.HideOnClose)
+                {
                     dockContent.Close();
+                    closedContents++;
+                }
             }
 
             var floatWindows = new FloatWindow[dockPanel.FloatWindows.Count];
@@ -508,6 +512,8 @@ namespace Bonsai.Editor.GraphView
                 if (floatWindows[i].NestedPanes.All(nestedPane => nestedPane.Contents.Count == 0))
                     floatWindows[i].Close();
             }
+
+            return closedContents;
         }
 
         private void AssignToolWindows()
@@ -649,13 +655,12 @@ namespace Bonsai.Editor.GraphView
             ThemeBase dockTheme = themeRenderer.ActiveTheme == ColorTheme.Light ? lightTheme : darkTheme;
             if (dockPanel.Theme != dockTheme)
             {
-                var restoreContents = dockPanel.Contents.Count > 0;
-                if (restoreContents)
-                {
-                    commandExecutor.BeginCompositeCommand();
-                    CloseAll();
-                    commandExecutor.EndCompositeCommand();
-                }
+                // tool windows are hidden rather than closed, so the dock panel is never
+                // empty, and only the contents which were actually closed contribute a
+                // command to the composite which the round trip below undoes
+                commandExecutor.BeginCompositeCommand();
+                var restoreContents = CloseAll() > 0;
+                commandExecutor.EndCompositeCommand();
 
                 var toolWindowLayout = PersistDockingLayout();
                 CloseToolWindows();

@@ -1,4 +1,4 @@
-namespace Bonsai.Design
+﻿namespace Bonsai.Design
 {
     /// <summary>
     /// Represents a button added to the workflow editor toolbar by a plugin.

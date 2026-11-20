@@ -18,7 +18,8 @@ namespace Bonsai.Design
         /// <see cref="Bonsai.Expressions.ExpressionBuilderGraph"/> of the selected view, the
         /// <see cref="CommandExecutor"/> command history, <see cref="IWorkflowEditorState"/>,
         /// <see cref="System.Windows.Forms.Design.IUIService"/>, <see cref="IEditorThemeService"/>,
-        /// <see cref="IEditorToolWindowService"/> and <see cref="IWorkflowSelectionService"/>.
+        /// <see cref="IEditorToolWindowService"/>, <see cref="IEditorToolbarService"/> and
+        /// <see cref="IWorkflowSelectionService"/>.
         /// </summary>
         /// <param name="provider">The editor service provider.</param>
         void Initialize(IServiceProvider provider);

@@ -53,6 +53,7 @@ namespace Bonsai.Editor
         readonly IDocumentationProvider documentationProvider;
         readonly WorkflowEditorControl editorControl;
         readonly WorkflowEditingService editingService;
+        readonly EditorToolbarService toolbarService;
         readonly WorkflowSelectionModel selectionModel;
         readonly Dictionary<string, string> propertyAssignments;
         readonly Dictionary<string, TreeNode> toolboxCategories;
@@ -171,6 +172,7 @@ namespace Bonsai.Editor
             exceptionCache = new WorkflowRuntimeExceptionCache();
             selectionModel = new WorkflowSelectionModel();
             editingService = new WorkflowEditingService(editorSite, this);
+            toolbarService = new EditorToolbarService(toolStrip);
             propertyAssignments = new Dictionary<string, string>();
             if (serviceProvider != null)
             {
@@ -2713,6 +2715,11 @@ namespace Bonsai.Editor
                     serviceType == typeof(WorkflowEditingService))
                 {
                     return siteForm.editingService;
+                }
+
+                if (serviceType == typeof(IEditorToolbarService))
+                {
+                    return siteForm.toolbarService;
                 }
 
                 if (serviceType == typeof(TypeVisualizerMap))

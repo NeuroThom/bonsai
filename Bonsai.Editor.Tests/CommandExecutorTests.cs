@@ -112,6 +112,32 @@ namespace Bonsai.Editor.Tests
         }
 
         [TestMethod]
+        public void Undo_CompositeCommandWithoutRedo_RestoresPreviousHistoryState()
+        {
+            // the editor closes and restores all dock contents in a single composite command
+            // when swapping the color theme, so the round trip should leave the command history
+            // exactly as it was found, and raise the status changed event exactly twice
+            var (executor, log, statusChangedCount) = CreateMockExecutor();
+            ExecuteCommand(executor, log, "A");
+            Assert.AreEqual(expected: 1, statusChangedCount());
+
+            executor.BeginCompositeCommand();
+            ExecuteCommand(executor, log, "B");
+            ExecuteCommand(executor, log, "C");
+            executor.EndCompositeCommand();
+            executor.Undo(allowRedo: false);
+
+            Assert.AreEqual(expected: 3, statusChangedCount());
+            CollectionAssert.AreEqual(new[] { "A" }, log);
+            Assert.IsTrue(executor.CanUndo);
+            Assert.IsFalse(executor.CanRedo);
+
+            executor.Undo();
+            Assert.AreEqual(expected: 0, log.Count);
+            Assert.IsFalse(executor.CanUndo);
+        }
+
+        [TestMethod]
         public void EndCompositeCommand_EmptyNestedComposite_NoStatusChanged()
         {
             var (executor, _, statusChangedCount) = CreateMockExecutor();

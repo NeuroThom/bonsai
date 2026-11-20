@@ -661,7 +661,10 @@ namespace Bonsai.Editor.GraphView
                 CloseToolWindows();
                 dockPanel.Theme = dockTheme;
                 RestoreDockingLayout(toolWindowLayout);
-                if (restoreContents) commandExecutor.Undo();
+                // the dock contents are closed and restored only to swap the theme, so the
+                // round trip is undone through the editor service to avoid marking the
+                // workflow as modified, and without leaving a redo entry behind
+                if (restoreContents) editorService.Undo(allowRedo: false);
             }
         }
 
